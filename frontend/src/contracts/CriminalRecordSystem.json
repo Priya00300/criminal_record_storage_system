@@ -1,0 +1,76 @@
+{
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "criminalAddress",
+          "type": "address"
+        }
+      ],
+      "name": "registerCriminal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "criminalAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "string",
+          "name": "crimeDescription",
+          "type": "string"
+        }
+      ],
+      "name": "addCrime",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "criminalAddress",
+          "type": "address"
+        }
+      ],
+      "name": "getCriminalRecord",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "criminalAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "string[]",
+              "name": "crimes",
+              "type": "string[]"
+            }
+          ],
+          "internalType": "struct CriminalRecordSystem.CriminalRecord",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "networks": {
+    "11155111": {
+      "address": "0xYourContractAddressHere"
+    }
+  }
+}

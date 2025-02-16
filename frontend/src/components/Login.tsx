@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -12,7 +14,8 @@ const Login = () => {
       const data = await api.login(email, password);
       console.log('Login successful:', data);
       // Store the token and redirect to the dashboard
-    } catch (err:any) {
+      navigate('/'); // Redirect to the dashboard after successful login
+    } catch (err: any) {
       setError(err.message || 'Login failed');
     }
   };
@@ -55,6 +58,21 @@ const Login = () => {
           Login
         </button>
       </form>
+
+      {/* Navigation Links */}
+      <div className="mt-4 text-center">
+        <p className="text-sm">
+          Don't have an account?{' '}
+          <Link to="/register" className="text-blue-500 hover:underline">
+            Register here
+          </Link>
+        </p>
+        <p className="text-sm mt-2">
+          <Link to="/" className="text-blue-500 hover:underline">
+            Go back to Dashboard
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };

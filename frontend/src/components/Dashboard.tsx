@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   return (
@@ -17,6 +18,16 @@ const Dashboard = () => {
           <h2 className="text-xl font-semibold mb-2">Closed Cases</h2>
           <p className="text-3xl font-bold">0</p>
         </div>
+      </div>
+
+      {/* Navigation Links */}
+      <div className="mt-8">
+        <Link
+          to="/login"
+          className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
+        >
+          Go to Login
+        </Link>
       </div>
     </div>
   );

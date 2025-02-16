@@ -7,6 +7,7 @@ import RecordForm from "./components/RecordForm.tsx";
 import RecordList from "./components/RecordList.tsx";
 
 function App() {
+  console.log("App component rendered"); // Debugging
   return (
     <BrowserRouter>
       <Routes>

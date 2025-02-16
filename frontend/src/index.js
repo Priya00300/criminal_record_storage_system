@@ -14,4 +14,6 @@ if (rootElement) {
   );
 }
 
+// If you want to measure performance in your app, pass a function
+// to log results (for example: reportWebVitals(console.log))
 reportWebVitals();

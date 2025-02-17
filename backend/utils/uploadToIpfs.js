@@ -1,36 +1,35 @@
-import "dotenv/config";
 import { create } from "ipfs-http-client";
+import mongoose from "mongoose";
+import fs from "fs";
+import { ethers } from "ethers"; // Added ethers import
 
-// Use Infura API Key Authentication
-const projectId = process.env.INFURA_PROJECT_ID;
-const privateKey = process.env.INFURA_PRIVATE_KEY;
+// Read JSON file using `fs`
+const CriminalRecordSystem = JSON.parse(
+  fs.readFileSync("./artifacts/contracts/CriminalRecordSystem.sol/CriminalRecordSystem.json", "utf-8")
+);
 
-// Create a Base64-encoded authorization string
-const auth = `Basic ${Buffer.from(`${projectId}:${privateKey}`).toString("base64")}`;
+// Blockchain configuration - Updated to use Pinata RPC
+const provider = new ethers.providers.JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL);
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+const contractAddress = process.env.CONTRACT_ADDRESS;
+const contract = new ethers.Contract(contractAddress, CriminalRecordSystem.abi, wallet);
 
-// Configure the IPFS client
+// IPFS configuration - Updated for Pinata
 const ipfs = create({
-    host: "ipfs.infura.io",
-    port: 5001,
-    protocol: "https",
-    headers: {
-        authorization: auth, // Use the Base64-encoded auth string
-    },
+  host: "api.pinata.cloud",
+  port: 443,
+  protocol: "https",
+  headers: {
+    authorization: `Basic ${Buffer.from(
+      `${process.env.PINATA_API_KEY}:${process.env.PINATA_SECRET_API_KEY}`
+    ).toString("base64")}`,
+  },
 });
 
-// Function to upload a file
-async function uploadFile(content) {
-    try {
-        const { path } = await ipfs.add(content);
-        console.log("Uploaded to IPFS: ", path);
-        return path;
-    } catch (err) {
-        console.error("Error uploading to IPFS:", err);
-        throw err;
-    }
-}
+// MongoDB configuration
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
-// Example Usage:
-uploadFile("This is a test criminal record.")
-    .then((cid) => console.log("CID:", cid))
-    .catch((err) => console.error("Error:", err));
+export { contract, ipfs, mongoose };

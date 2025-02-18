@@ -1,49 +1,63 @@
 import dotenv from "dotenv";
 dotenv.config();
-import 'dotenv/config'; // Must be FIRST import
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import mongoose from "mongoose";
+import swaggerUi from "swagger-ui-express";
+import swaggerJsdoc from "swagger-jsdoc";
+import { body, validationResult } from "express-validator";
+import { register, login } from "./controllers/authController.js"; // Ensure controllers are correct
+
+const app = express();
+
+// ✅ Debugging Environment Variables
 console.log("✅ [DEBUG] Loaded Environment Variables:", {
   PRIVATE_KEY: process.env.PRIVATE_KEY ? "Exists" : "Missing",
   BLOCKCHAIN_RPC_URL: process.env.BLOCKCHAIN_RPC_URL ? "Exists" : "Missing",
   CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS ? "Exists" : "Missing",
 });
 
-import express from "express";
-const app = express();
-import cors from "cors";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import mongoose from "mongoose";
-console.log("🔍 Debug: Trying to load authRoutes.js...");
-import authRoutes from "./routes/authRoutes.js";
-console.log("✅ Debug: authRoutes.js loaded successfully!");
-console.log("🔍 Debug: Checking authRoutes before registering...");
-console.log(authRoutes);
-app.use("/auth", authRoutes);
+// ✅ Apply Essential Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+      },
+    },
+  })
+);
 
-
-import contractRoutes from "./routes/contractRoutes.js";
-import ipfsRoutes from "./routes/ipfsRoutes.js";
-import swaggerUi from "swagger-ui-express";
-import swaggerJsdoc from "swagger-jsdoc";
-
-// Debug environment variables immediately
-console.log("[ENV Check] Crucial Variables:", {
-  mongoConnected: !!process.env.MONGODB_URI,
-  blockchainRPC: !!process.env.BLOCKCHAIN_RPC_URL,
-  contractAddress: !!process.env.CONTRACT_ADDRESS,
-  jwtSecret: !!process.env.JWT_SECRET
+// ✅ Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: "Too many requests from this IP, please try again later",
 });
+app.use("/", limiter);
 
-
-
-// Database Connection with enhanced options
+// ✅ Database Connection
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000
+      socketTimeoutMS: 45000,
     });
     console.log("✅ MongoDB connected successfully");
   } catch (err) {
@@ -51,125 +65,133 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
+// ✅ Health Check Endpoint
 app.get("/db-status", async (req, res) => {
   try {
     await mongoose.connection.db.admin().ping();
-    res.json({ 
+    res.json({
       status: "connected",
-      db: mongoose.connection.db.databaseName 
+      db: mongoose.connection.db.databaseName,
     });
   } catch (err) {
     res.status(500).json({
       status: "disconnected",
-      error: err.message
+      error: err.message,
     });
   }
 });
-// Enhanced Security Middleware
-app.use(
-  cors({
-    origin: "http://localhost:3000", // Frontend port
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"]
+
+// ✅ DIRECTLY DEFINE AUTH ROUTES INSIDE `server.js`
+console.log("🔍 Debug: Registering auth routes directly inside `server.js`...");
+app.post(
+  "/auth/register",
+  [
+    body("username").isLength({ min: 3 }).withMessage("Username must be at least 3 characters").trim().escape(),
+    body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+    body("role").isIn(["admin", "registrar", "viewer"]).withMessage("Invalid role selection"),
+  ],
+  async (req, res) => {
+    try {
+      console.log("🔍 Debug: Processing /register request...");
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        console.log("🔴 Validation failed:", errors.array());
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      console.log("✅ Validation passed. Calling register function...");
+      await register(req, res);
+    } catch (error) {
+      console.error("❌ Registration error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
-}));
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+);
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: "Too many requests from this IP, please try again later"
-});
-app.use("/", limiter);
+app.post(
+  "/auth/login",
+  [
+    body("username").notEmpty().withMessage("Username is required"),
+    body("password").notEmpty().withMessage("Password is required"),
+  ],
+  async (req, res) => {
+    try {
+      console.log("🔍 Debug: Processing /login request...");
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        console.log("🔴 Validation failed:", errors.array());
+        return res.status(400).json({ errors: errors.array() });
+      }
 
-// Swagger Documentation
-const swaggerOptions = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "Criminal Record System API",
-      version: "1.0.0",
-      description: "API documentation for Criminal Records Management System"
-    },
-    servers: [
-      { 
-        url: `http://localhost:${process.env.PORT || 5000}`,
-        description: "Development server"
-      }
-    ],
-    components: {
-      securitySchemes: {
-        BearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT"
-        }
-      }
+      console.log("✅ Validation passed. Calling login function...");
+      await login(req, res);
+    } catch (error) {
+      console.error("❌ Login error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
-  },
-  apis: ["./routes/*.js"]
-};
-const specs = swaggerJsdoc(swaggerOptions);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
+  }
+);
 
-// Routes
-app.use("/auth", authRoutes);
+// ✅ Manually register a test route
+app.get("/auth/test-route", (req, res) => {
+  res.json({ message: "Test route working!" });
+});
+console.log("✅ Manually registered test route at /auth/test-route");
+
+// ✅ Register Other Routes
+import contractRoutes from "./routes/contractRoutes.js";
+import ipfsRoutes from "./routes/ipfsRoutes.js";
+app.use("/contract", contractRoutes);
+app.use("/ipfs", ipfsRoutes);
+
+// ✅ Check That Routes Were Registered
+console.log("🔍 Debug: Listing all registered routes...");
 app._router.stack.forEach((r) => {
   if (r.route && r.route.path) {
     console.log(`🛠️ Registered Route: ${r.route.path}`);
   }
 });
 
-app.use("/contract", contractRoutes);
-app.use("/ipfs", ipfsRoutes);
+// ✅ Swagger Documentation
+const swaggerOptions = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Criminal Record System API",
+      version: "1.0.0",
+      description: "API documentation for Criminal Records Management System",
+    },
+    servers: [
+      {
+        url: `http://localhost:${process.env.PORT || 5000}`,
+        description: "Development server",
+      },
+    ],
+    components: {
+      securitySchemes: {
+        BearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
+    },
+  },
+  apis: ["./routes/*.js"],
+};
+const specs = swaggerJsdoc(swaggerOptions);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
-// Health Check
-app.get("/", (req, res) => 
-  res.status(200).json({ 
-    status: "active", 
-    timestamp: new Date().toISOString()
-  })
-);
-
-
-// Error Handling Middleware
-app.use((err, req, res, next) => {
-  console.error(`💥 Error [${err.name}]: ${err.message}`);
-  
-  const response = {
-    status: "error",
-    message: "Something went wrong!"
-  };
-
-  if (process.env.NODE_ENV === "development") {
-    response.error = err.message;
-    response.stack = err.stack;
-  }
-
-  res.status(err.statusCode || 500).json(response);
-});
-
-// 404 Handler
+// ✅ 404 Handler
 app.all("*", (req, res) => {
   res.status(404).json({
     status: "fail",
-    message: `Can't find ${req.originalUrl} on this server!`
+    message: `Can't find ${req.originalUrl} on this server!`,
   });
 });
 
-// Server Initialization
+// ✅ Server Initialization
 const startServer = async () => {
   try {
     await connectDB();
@@ -185,13 +207,12 @@ const startServer = async () => {
   }
 };
 
-// Start server based on environment
+// ✅ Start Server Based on Environment
 let server;
 if (process.env.NODE_ENV !== "test") {
   server = startServer();
 } else {
   server = app.listen(0);
 }
-
 
 export { app, server };

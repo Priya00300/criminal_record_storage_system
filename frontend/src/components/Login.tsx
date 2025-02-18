@@ -1,22 +1,27 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../utils/api";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const data = await api.login(email, password);
-      console.log('Login successful:', data);
-      // Store the token and redirect to the dashboard
-      navigate('/'); // Redirect to the dashboard after successful login
+      const data = await api.login(username, password);
+      console.log("Login successful:", data);
+
+      // Store the token in localStorage
+      localStorage.setItem("token", data.token);
+
+      // Redirect to the dashboard
+      navigate("/");
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      console.error("Login error:", err);
+      setError(err.message || "Login failed");
     }
   };
 
@@ -26,16 +31,16 @@ const Login = () => {
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2" htmlFor="email">
-            Email
+          <label className="block text-sm font-medium mb-2" htmlFor="username">
+            Username
           </label>
           <input
-            type="email"
-            id="email"
+            type="text"
+            id="username"
             className="w-full px-3 py-2 border rounded-lg"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
           />
         </div>
         <div className="mb-6">
@@ -59,11 +64,10 @@ const Login = () => {
         </button>
       </form>
 
-      {/* Navigation Links */}
       <div className="mt-4 text-center">
         <p className="text-sm">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-blue-500 hover:underline">
+          Don't have an account?{" "}
+          <Link to="/auth/register" className="text-blue-500 hover:underline">
             Register here
           </Link>
         </p>
